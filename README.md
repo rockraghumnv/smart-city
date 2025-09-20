@@ -2,6 +2,9 @@
 
 All-in-one MERN app.
 
+**Demo Video:**  
+[Watch on Google Drive](https://drive.google.com/file/d/1IPKUwur90TfByhqf0cNgwVZV9fRN8vz9/view?usp=sharing)
+
 What it does
 - Recycle: upload item photo, AI analyzes.
 - Safety: make events, join, send text/image reports (AI acts).
