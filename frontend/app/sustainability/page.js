@@ -1,190 +1,220 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowLeft, Droplets, Zap, Car, Leaf } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Settings } from 'lucide-react';
 import Link from 'next/link';
+import ProtectedRoute from '@/components/ProtectedRoute';
+
+// Import all advanced components
+import LogForm from './components/LogForm';
+import ScoreCard from './components/ScoreCard';
+import ChartsPanel from './components/ChartsPanel';
+import Timeline from './components/Timeline';
+import Badges from './components/Badges';
+import TipsCarousel from './components/TipsCarousel';
+import EmptyState from './components/EmptyState';
+import LevelSystem from './components/LevelSystem';
+import SocialFeatures from './components/SocialFeatures';
+import AdvancedAnalytics from './components/AdvancedAnalytics';
+import SmartRecommendations from './components/SmartRecommendations';
+import DataExport from './components/DataExport';
+
+// Import utilities
+import { getEntries, getSettings, updateSettings } from './lib/storage';
+import { calculateEarthScore, calculateDailyTotals, calculateWeeklyAggregates } from './lib/score';
 
 export default function SustainabilityPage() {
-  const [formData, setFormData] = useState({
-    water: '',
-    electricity: '',
-    transport: 'bus'
-  });
-
-  const [stats] = useState({
-    waterSaved: 245,
-    energySaved: 180,
-    carbonReduced: 85,
-    weeklyGoal: 300
-  });
-
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Here you would typically save to a database
-    alert('Daily impact logged successfully!');
-    setFormData({ water: '', electricity: '', transport: 'bus' });
-  };
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex items-center mb-8">
-        <Link href="/" className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
-          <ArrowLeft className="w-6 h-6" />
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Impact</h1>
-          <p className="text-gray-600">Track your daily sustainability habits</p>
+    <ProtectedRoute>
+      <SustainabilityContent />
+    </ProtectedRoute>
+  );
+}
+
+function SustainabilityContent() {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [entries, setEntries] = useState([]);
+  const [showSettings, setShowSettings] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Load data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const storedEntries = getEntries();
+        setEntries(storedEntries);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
+
+  // Calculate current stats
+  const today = new Date();
+  const dailyTotals = calculateDailyTotals(entries, today);
+  const earthScore = calculateEarthScore(dailyTotals);
+  const weeklyData = calculateWeeklyAggregates(entries);  // Tab navigation
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: '📊' },
+    { id: 'log', label: 'Log Activity', icon: '📝' },
+    { id: 'charts', label: 'Analytics', icon: '📈' },
+    { id: 'badges', label: 'Achievements', icon: '🏆' },
+    { id: 'level', label: 'Level Progress', icon: '🎯' },
+    { id: 'social', label: 'Community', icon: '👥' },
+    { id: 'recommendations', label: 'Smart Tips', icon: '💡' },
+    { id: 'advanced', label: 'Insights', icon: '🔬' },
+    { id: 'timeline', label: 'History', icon: '📅' },
+    { id: 'export', label: 'Export', icon: '💾' }
+  ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your impact data...</p>
         </div>
       </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Daily Logger Form */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-xl font-semibold mb-6 flex items-center">
-            <Leaf className="w-5 h-5 mr-2 text-green-600" />
-            Log Today's Usage
-          </h2>
+  // Show empty state if no entries exist
+  if (entries.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center mb-6">
+            <Link href="/" className="mr-4">
+              <ArrowLeft className="h-6 w-6 text-gray-600 hover:text-gray-800" />
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-800">MyImpact</h1>
+          </div>
+          <EmptyState onDataLoaded={() => setEntries(getEntries())} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <Link href="/" className="mr-4">
+              <ArrowLeft className="h-6 w-6 text-gray-600 hover:text-gray-800" />
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-800">MyImpact</h1>
+          </div>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="p-2 text-gray-600 hover:text-gray-800 rounded-lg hover:bg-white/50"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+        </div>        {/* Tab Navigation */}
+        <div className="mb-6">
+          {/* Primary tabs - always visible */}
+          <div className="flex flex-wrap gap-1 mb-2 bg-white/50 p-1 rounded-xl">
+            {tabs.slice(0, 5).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 min-w-0 px-3 py-2 rounded-lg font-medium transition-all text-xs sm:text-sm ${
+                  activeTab === tab.id
+                    ? 'bg-white text-green-700 shadow-md'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-white/30'
+                }`}
+              >
+                <span className="text-xs">{tab.icon}</span>
+                <span className="ml-1 hidden sm:inline">{tab.label}</span>
+              </button>
+            ))}
+          </div>
           
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Water Usage (Liters)
-              </label>
-              <div className="relative">
-                <Droplets className="absolute left-3 top-3 w-5 h-5 text-blue-500" />
-                <input
-                  type="number"
-                  name="water"
-                  value={formData.water}
-                  onChange={handleInputChange}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Enter liters used"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Electricity Usage (kWh)
-              </label>
-              <div className="relative">
-                <Zap className="absolute left-3 top-3 w-5 h-5 text-yellow-500" />
-                <input
-                  type="number"
-                  name="electricity"
-                  value={formData.electricity}
-                  onChange={handleInputChange}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Enter kWh used"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Primary Transport Mode
-              </label>
-              <div className="relative">
-                <Car className="absolute left-3 top-3 w-5 h-5 text-blue-600" />
-                <select
-                  name="transport"
-                  value={formData.transport}
-                  onChange={handleInputChange}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                >
-                  <option value="bus">Public Bus</option>
-                  <option value="metro">Metro</option>
-                  <option value="bike">Bicycle</option>
-                  <option value="walk">Walking</option>
-                  <option value="car">Private Car</option>
-                  <option value="motorcycle">Motorcycle</option>
-                </select>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
-            >
-              Log Today's Impact
-            </button>
-          </form>
+          {/* Secondary tabs - collapsible */}
+          <div className="flex flex-wrap gap-1 bg-white/30 p-1 rounded-xl">
+            {tabs.slice(5).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 py-1 rounded-md font-medium transition-all text-xs ${
+                  activeTab === tab.id
+                    ? 'bg-white text-green-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
+                }`}
+              >
+                <span className="text-xs mr-1">{tab.icon}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Stats Dashboard */}
-        <div className="space-y-6">
-          {/* Weekly Progress */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Weekly Progress</h3>
-            <div className="space-y-4">
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <ScoreCard 
+                  score={earthScore} 
+                  dailyTotals={dailyTotals}
+                  showSettings={showSettings}
+                  onSettingsChange={() => setEntries(getEntries())}
+                />
+              </div>
               <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Sustainability Score</span>
-                  <span>{stats.carbonReduced}/{stats.weeklyGoal}</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-green-600 h-2 rounded-full" 
-                    style={{ width: `${(stats.carbonReduced / stats.weeklyGoal) * 100}%` }}
-                  ></div>
-                </div>
+                <TipsCarousel />
               </div>
             </div>
+            <ChartsPanel weeklyData={weeklyData} />
           </div>
+        )}
 
-          {/* Impact Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-blue-50 rounded-xl p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-600 text-sm font-medium">Water Saved</p>
-                  <p className="text-2xl font-bold text-blue-700">{stats.waterSaved}L</p>
-                </div>
-                <Droplets className="w-8 h-8 text-blue-500" />
-              </div>
-            </div>
+        {activeTab === 'log' && (
+          <LogForm onEntryAdded={() => setEntries(getEntries())} />
+        )}
 
-            <div className="bg-yellow-50 rounded-xl p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-yellow-600 text-sm font-medium">Energy Saved</p>
-                  <p className="text-2xl font-bold text-yellow-700">{stats.energySaved} kWh</p>
-                </div>
-                <Zap className="w-8 h-8 text-yellow-500" />
-              </div>
-            </div>
+        {activeTab === 'charts' && (
+          <ChartsPanel weeklyData={weeklyData} detailed={true} />
+        )}
 
-            <div className="bg-green-50 rounded-xl p-4 sm:col-span-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-600 text-sm font-medium">CO₂ Reduced</p>
-                  <p className="text-2xl font-bold text-green-700">{stats.carbonReduced} kg</p>
-                  <p className="text-green-600 text-xs">This month</p>
-                </div>
-                <Leaf className="w-8 h-8 text-green-500" />
-              </div>
-            </div>
-          </div>
+        {activeTab === 'badges' && (
+          <Badges entries={entries} />
+        )}        {activeTab === 'timeline' && (
+          <Timeline 
+            entries={entries} 
+            onEntriesChange={() => setEntries(getEntries())}
+          />
+        )}
 
-          {/* Tips */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Today's Tip</h3>
-            <div className="bg-green-50 rounded-lg p-4">
-              <p className="text-green-800 text-sm">
-                💡 Switch to LED bulbs to reduce electricity consumption by up to 80% 
-                compared to traditional incandescent bulbs!
-              </p>
-            </div>
-          </div>
-        </div>
+        {activeTab === 'level' && (
+          <LevelSystem entries={entries} />
+        )}
+
+        {activeTab === 'social' && (
+          <SocialFeatures 
+            entries={entries} 
+            userStats={{ earthScore, streak: 5 }} 
+          />
+        )}        {activeTab === 'advanced' && (
+          <AdvancedAnalytics entries={entries} />
+        )}
+
+        {activeTab === 'recommendations' && (
+          <SmartRecommendations 
+            entries={entries} 
+            userStats={{ earthScore, streak: 5 }} 
+          />
+        )}
+
+        {activeTab === 'export' && (
+          <DataExport entries={entries} />
+        )}
       </div>
     </div>
   );

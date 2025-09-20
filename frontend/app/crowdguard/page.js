@@ -1,290 +1,262 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowLeft, Upload, AlertTriangle, CheckCircle, Camera, Activity } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, Calendar, Shield, Users, AlertTriangle, TrendingUp, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import EventCard from '@/components/crowdguard/EventCard';
+import { initializeStorage, getEvents, isEventUpcoming, getEventStatus } from './lib/storage';
 
 export default function CrowdGuardPage() {
-  const [uploadedFile, setUploadedFile] = useState(null);
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  return (
+    <ProtectedRoute>
+      <CrowdGuardContent />
+    </ProtectedRoute>
+  );
+}
 
-  // Mock analysis results
-  const mockAnalysis = () => {
-    const scenarios = [
+function CrowdGuardContent() {
+  const [events, setEvents] = useState([]);
+  const [activeTab, setActiveTab] = useState('upcoming');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    initializeStorage();
+    loadEvents();
+  }, []);
+
+  const loadEvents = () => {
+    setIsLoading(true);
+    // Simulate loading delay
+    setTimeout(() => {
+      const allEvents = getEvents();
+      setEvents(allEvents);
+      setIsLoading(false);
+    }, 500);
+  };
+
+  const upcomingEvents = events.filter(event => isEventUpcoming(event));
+  const pastEvents = events.filter(event => !isEventUpcoming(event));
+  const ongoingEvents = events.filter(event => getEventStatus(event) === 'ongoing');
+
+  const getStatsCards = () => {
+    const totalAttendees = events.reduce((sum, event) => sum + event.attendees.length, 0);
+    const totalCapacity = events.reduce((sum, event) => sum + event.capacity, 0);
+    const avgOccupancy = totalCapacity > 0 ? Math.round((totalAttendees / totalCapacity) * 100) : 0;
+
+    return [
       {
-        status: 'Safe',
-        crowdDensity: 'Low',
-        riskLevel: 'Normal',
-        peopleCount: 23,
-        confidence: 94,
-        recommendations: ['Continue normal operations', 'Monitor for any changes']
+        title: 'Total Events',
+        value: events.length,
+        icon: Calendar,
+        color: 'blue',
+        subtitle: `${ongoingEvents.length} ongoing`
       },
       {
-        status: 'Moderate Risk',
-        crowdDensity: 'Medium',
-        riskLevel: 'Caution',
-        peopleCount: 78,
-        confidence: 87,
-        recommendations: ['Increase security presence', 'Monitor crowd movement', 'Prepare crowd control measures']
+        title: 'Total Attendees',
+        value: totalAttendees.toLocaleString(),
+        icon: Users,
+        color: 'green',
+        subtitle: `${totalCapacity.toLocaleString()} capacity`
       },
       {
-        status: 'High Risk',
-        crowdDensity: 'High',
-        riskLevel: 'Alert',
-        peopleCount: 156,
-        confidence: 91,
-        recommendations: ['Immediate crowd control needed', 'Deploy additional security', 'Consider crowd dispersal measures']
+        title: 'Avg Occupancy',
+        value: `${avgOccupancy}%`,
+        icon: TrendingUp,
+        color: avgOccupancy > 80 ? 'red' : avgOccupancy > 60 ? 'yellow' : 'green',
+        subtitle: 'across all events'
+      },
+      {
+        title: 'Safety Status',
+        value: 'All Clear',
+        icon: Shield,
+        color: 'green',
+        subtitle: 'No active alerts'
       }
     ];
-    
-    return scenarios[Math.floor(Math.random() * scenarios.length)];
   };
 
-  const recentAlerts = [
-    {
-      id: 1,
-      location: 'Brigade Road',
-      time: '2 minutes ago',
-      status: 'High Risk',
-      type: 'Overcrowding',
-      severity: 'high'
-    },
-    {
-      id: 2,
-      location: 'Commercial Street',
-      time: '15 minutes ago',
-      status: 'Resolved',
-      type: 'Crowd Dispersed',
-      severity: 'low'
-    },
-    {
-      id: 3,
-      location: 'MG Road Metro',
-      time: '1 hour ago',
-      status: 'Monitoring',
-      type: 'Moderate Crowd',
-      severity: 'medium'
-    }
-  ];
+  const statsCards = getStatsCards();
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setUploadedFile(file);
-      setAnalysisResult(null);
-    }
+  const getColorClasses = (color) => {
+    const colors = {
+      blue: 'from-blue-500 to-blue-600',
+      green: 'from-green-500 to-green-600',
+      red: 'from-red-500 to-red-600',
+      yellow: 'from-yellow-500 to-orange-500'
+    };
+    return colors[color] || colors.blue;
   };
 
-  const analyzeImage = () => {
-    if (!uploadedFile) return;
-    
-    setIsAnalyzing(true);
-    // Simulate AI analysis
-    setTimeout(() => {
-      setAnalysisResult(mockAnalysis());
-      setIsAnalyzing(false);
-    }, 3000);
-  };
+  const filteredEvents = activeTab === 'upcoming' ? upcomingEvents : pastEvents;
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Safe': return 'text-green-600 bg-green-100';
-      case 'Moderate Risk': return 'text-yellow-600 bg-yellow-100';
-      case 'High Risk': return 'text-red-600 bg-red-100';
-      case 'Resolved': return 'text-green-600 bg-green-100';
-      case 'Monitoring': return 'text-blue-600 bg-blue-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const getSeverityIcon = (severity) => {
-    switch(severity) {
-      case 'high': return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      case 'medium': return <Activity className="w-4 h-4 text-yellow-500" />;
-      case 'low': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      default: return <Activity className="w-4 h-4 text-gray-500" />;
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading events...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <div className="flex items-center mb-8">
-        <Link href="/" className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
-          <ArrowLeft className="w-6 h-6" />
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">City Safety</h1>
-          <p className="text-gray-600">AI-powered crowd monitoring and event detection</p>
+      <div className="bg-white shadow-sm border-b">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Link href="/" className="mr-4 p-2 hover:bg-gray-100 rounded-lg">
+                <ArrowLeft className="w-6 h-6" />
+              </Link>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">CrowdGuard</h1>
+                <p className="text-gray-600">
+                  Smart crowd management and safety monitoring for public events
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/crowdguard/create-event"
+              className="bg-gradient-to-r from-red-500 to-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:from-red-600 hover:to-orange-600 transition-all duration-200 flex items-center shadow-lg"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Create Event
+            </Link>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Upload & Analysis Section */}
-        <div className="space-y-6">
-          {/* Upload Section */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-semibold mb-6 flex items-center">
-              <Camera className="w-5 h-5 mr-2 text-blue-600" />
-              Upload Image/Video for Analysis
-            </h2>
-            
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600 mb-4">
-                Upload an image or video to analyze crowd density and detect potential risks
-              </p>
-              <input
-                type="file"
-                accept="image/*,video/*"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="fileUpload"
-              />
-              <label
-                htmlFor="fileUpload"
-                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+      <div className="container mx-auto px-4 py-8">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {statsCards.map((stat, index) => {
+            const IconComponent = stat.icon;
+            return (
+              <div
+                key={index}
+                className={`bg-gradient-to-br ${getColorClasses(stat.color)} rounded-xl p-6 text-white shadow-lg`}
               >
-                Choose File
-              </label>
-            </div>
-
-            {uploadedFile && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">
-                  Selected: <span className="font-medium">{uploadedFile.name}</span>
-                </p>
-                <button
-                  onClick={analyzeImage}
-                  disabled={isAnalyzing}
-                  className="mt-3 w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400"
-                >
-                  {isAnalyzing ? 'Analyzing...' : 'Analyze Image'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Analysis Results */}
-          {isAnalyzing && (
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-600">Analyzing image with AI...</span>
-              </div>
-            </div>
-          )}
-
-          {analysisResult && (
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">Analysis Results</h3>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600">Status</p>
-                    <p className={`font-semibold px-2 py-1 rounded text-sm inline-block ${getStatusColor(analysisResult.status)}`}>
-                      {analysisResult.status}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600">People Count</p>
-                    <p className="text-xl font-bold text-gray-900">{analysisResult.peopleCount}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600">Crowd Density</p>
-                    <p className="font-semibold text-gray-900">{analysisResult.crowdDensity}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600">Confidence</p>
-                    <p className="text-xl font-bold text-gray-900">{analysisResult.confidence}%</p>
+                <div className="flex items-center justify-between mb-3">
+                  <IconComponent className="w-8 h-8" />
+                  <div className="text-right">
+                    <div className="text-2xl font-bold">{stat.value}</div>
                   </div>
                 </div>
-
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-900 mb-2">Recommendations:</h4>
-                  <ul className="space-y-1">
-                    {analysisResult.recommendations.map((rec, index) => (
-                      <li key={index} className="text-blue-800 text-sm flex items-start">
-                        <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                        {rec}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <h3 className="font-semibold mb-1">{stat.title}</h3>
+                <p className="text-sm opacity-90">{stat.subtitle}</p>
               </div>
-            </div>
-          )}
+            );
+          })}
         </div>
 
-        {/* Alerts & Monitoring */}
-        <div className="space-y-6">
-          {/* Live Alerts */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Recent Alerts</h3>
-            <div className="space-y-3">
-              {recentAlerts.map((alert) => (
-                <div key={alert.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    {getSeverityIcon(alert.severity)}
-                    <div>
-                      <p className="font-medium text-gray-900">{alert.location}</p>
-                      <p className="text-sm text-gray-600">{alert.type} • {alert.time}</p>
-                    </div>
-                  </div>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(alert.status)}`}>
-                    {alert.status}
-                  </span>
-                </div>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Link
+            href="/crowdguard/admin"
+            className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow border-l-4 border-red-500"
+          >
+            <div className="flex items-center">
+              <AlertTriangle className="w-6 h-6 text-red-500 mr-3" />
+              <div>
+                <h3 className="font-medium text-gray-900">Admin Dashboard</h3>
+                <p className="text-sm text-gray-600">Monitor incidents & alerts</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/crowdguard/qr-scan"
+            className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow border-l-4 border-blue-500"
+          >
+            <div className="flex items-center">
+              <Shield className="w-6 h-6 text-blue-500 mr-3" />
+              <div>
+                <h3 className="font-medium text-gray-900">QR Validator</h3>
+                <p className="text-sm text-gray-600">Validate event tickets</p>
+              </div>
+            </div>
+          </Link>
+
+          <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500">
+            <div className="flex items-center">
+              <Shield className="w-6 h-6 text-green-500 mr-3" />
+              <div>
+                <h3 className="font-medium text-gray-900">System Status</h3>
+                <p className="text-sm text-green-600">All systems operational</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Events Section */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          {/* Tabs */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setActiveTab('upcoming')}
+                className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                  activeTab === 'upcoming'
+                    ? 'bg-white text-red-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Upcoming ({upcomingEvents.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('past')}
+                className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                  activeTab === 'past'
+                    ? 'bg-white text-red-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Past ({pastEvents.length})
+              </button>
+            </div>
+
+            <Link
+              href="/crowdguard/create-event"
+              className="text-red-600 hover:text-red-700 font-medium text-sm flex items-center"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add Event
+            </Link>
+          </div>
+
+          {/* Events Grid */}
+          {filteredEvents.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredEvents.map((event) => (
+                <EventCard key={event.id} event={event} />
               ))}
             </div>
-          </div>
-
-          {/* City Overview */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">City Overview</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">127</div>
-                <div className="text-sm text-green-700">Safe Zones</div>
-              </div>
-              <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                <div className="text-2xl font-bold text-yellow-600">8</div>
-                <div className="text-sm text-yellow-700">Monitoring</div>
-              </div>
-              <div className="text-center p-4 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">2</div>
-                <div className="text-sm text-red-700">High Risk</div>
-              </div>
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">45</div>
-                <div className="text-sm text-blue-700">Active Cameras</div>
-              </div>
+          ) : (
+            <div className="text-center py-12">
+              <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-medium text-gray-900 mb-2">
+                {activeTab === 'upcoming' ? 'No Upcoming Events' : 'No Past Events'}
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {activeTab === 'upcoming' 
+                  ? 'Create your first event to get started with crowd management'
+                  : 'No past events to display yet'
+                }
+              </p>
+              {activeTab === 'upcoming' && (
+                <Link
+                  href="/crowdguard/create-event"
+                  className="inline-flex items-center bg-gradient-to-r from-red-500 to-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:from-red-600 hover:to-orange-600 transition-all duration-200"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Create Your First Event
+                </Link>
+              )}
             </div>
-          </div>
-
-          {/* Emergency Contact */}
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-red-800 mb-2">Emergency Contact</h3>
-            <p className="text-red-700 text-sm mb-4">
-              For immediate assistance or to report emergencies:
-            </p>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-red-700">Emergency:</span>
-                <span className="font-bold text-red-800">112</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-red-700">Police:</span>
-                <span className="font-bold text-red-800">100</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-red-700">Traffic Control:</span>
-                <span className="font-bold text-red-800">103</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

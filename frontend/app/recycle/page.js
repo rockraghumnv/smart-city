@@ -3,10 +3,22 @@
 import { useState } from 'react';
 import { ArrowLeft, Recycle, UtensilsCrossed, Camera, MapPin, Calendar, Clock, Upload, CheckCircle, Coins, Truck, Package, AlertCircle, Users, Leaf } from 'lucide-react';
 import Link from 'next/link';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function RecycleHubPage() {
+  return (
+    <ProtectedRoute>
+      <RecycleHubContent />
+    </ProtectedRoute>
+  );
+}
+
+function RecycleHubContent() {
   const [currentView, setCurrentView] = useState('home');
   const [uploadedImage, setUploadedImage] = useState(null);
+  const [classification, setClassification] = useState(null);
+  const [uploadError, setUploadError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [requests, setRequests] = useState([
     { id: 1, type: 'recycle', category: 'plastic', quantity: '5', status: 'Completed', date: '2025-09-15', points: 50 },
     { id: 2, type: 'food', foodType: 'cooked', servings: '10', status: 'Completed', date: '2025-09-18', points: 200 }
@@ -33,12 +45,43 @@ export default function RecycleHubPage() {
     { id: 'packaged', name: 'Packaged Food', points: 10, icon: '📦' }
   ];
 
-  const handleImageUpload = (event) => {
+  const handleImageUpload = async (event) => {
     const file = event.target.files[0];
+    setClassification(null);
+    setUploadError('');
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => setUploadedImage(e.target.result);
-      reader.readAsDataURL(file);
+      setUploadedImage(URL.createObjectURL(file));
+      setIsUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('description', 'Recycling item');
+        formData.append('weight', formDataState.quantity || 1);
+        formData.append('category', formDataState.category || 'other');
+        // Add your auth token logic here if needed
+        const token = localStorage.getItem('greenshift_token');
+        const uploadRes = await fetch('http://localhost:5000/api/products/upload', {
+          method: 'POST',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+          body: formData,
+        });
+        if (!uploadRes.ok) throw new Error('Image upload failed');
+        const uploadData = await uploadRes.json();
+        const filename = uploadData.filename || uploadData.file || uploadData.image || file.name;
+        // Call classify-image API
+        const classifyRes = await fetch('http://localhost:5000/api/classify-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename }),
+        });
+        if (!classifyRes.ok) throw new Error('Classification failed');
+        const classifyData = await classifyRes.json();
+        setClassification(classifyData);
+      } catch (err) {
+        setUploadError(err.message);
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -138,7 +181,7 @@ export default function RecycleHubPage() {
   );
 
   const RecycleForm = () => {
-    const [formData, setFormData] = useState({
+    const [formDataState, setFormData] = useState({
       category: '',
       quantity: '',
       address: '',
@@ -149,11 +192,11 @@ export default function RecycleHubPage() {
 
     const handleSubmit = (e) => {
       e.preventDefault();
-      if (!formData.category || !formData.quantity || !formData.address) {
+      if (!formDataState.category || !formDataState.quantity || !formDataState.address) {
         alert('Please fill in all required fields');
         return;
       }
-      submitRequest('recycle', formData);
+      submitRequest('recycle', formDataState);
     };
 
     return (
@@ -173,9 +216,9 @@ export default function RecycleHubPage() {
                 <button
                   key={category.id}
                   type="button"
-                  onClick={() => setFormData({...formData, category: category.id})}
+                  onClick={() => setFormData({...formDataState, category: category.id})}
                   className={`p-4 rounded-lg border-2 text-center transition-colors ${
-                    formData.category === category.id 
+                    formDataState.category === category.id 
                       ? 'border-green-500 bg-green-50' 
                       : 'border-gray-200 hover:border-gray-300'
                   }`}>
@@ -188,12 +231,12 @@ export default function RecycleHubPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Upload Photo (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Upload Photo *</label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               {uploadedImage ? (
                 <div className="space-y-3">
                   <img src={uploadedImage} alt="Uploaded" className="mx-auto h-32 w-32 object-cover rounded-lg" />
-                  <button type="button" onClick={() => setUploadedImage(null)} className="text-red-500 text-sm">Remove</button>
+                  <button type="button" onClick={() => { setUploadedImage(null); setClassification(null); }} className="text-red-500 text-sm">Remove</button>
                 </div>
               ) : (
                 <div>
@@ -206,6 +249,21 @@ export default function RecycleHubPage() {
                   </div>
                 </div>
               )}
+              {isUploading && <div className="text-sm text-gray-500 mt-2">Uploading and classifying...</div>}
+              {uploadError && <div className="text-red-600 text-sm mt-2">{uploadError}</div>}
+              {classification && (
+                <div className="mt-4 p-4 rounded-lg border border-green-200 bg-green-50 text-left">
+                  <div className="font-semibold">Classification Result:</div>
+                  <div className="mt-1">{classification.result}</div>
+                  <div className="mt-1 font-medium">
+                    {classification.recyclable ? (
+                      <span className="text-green-700">♻️ {classification.message}</span>
+                    ) : (
+                      <span className="text-red-700">🚫 {classification.message}</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -214,8 +272,8 @@ export default function RecycleHubPage() {
             <input
               type="number"
               min="1"
-              value={formData.quantity}
-              onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+              value={formDataState.quantity}
+              onChange={(e) => setFormData({...formDataState, quantity: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
               placeholder="Enter quantity"
             />
@@ -224,8 +282,8 @@ export default function RecycleHubPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Address *</label>
             <textarea
-              value={formData.address}
-              onChange={(e) => setFormData({...formData, address: e.target.value})}
+              value={formDataState.address}
+              onChange={(e) => setFormData({...formDataState, address: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
               rows="3"
               placeholder="Enter your full pickup address"
@@ -237,8 +295,8 @@ export default function RecycleHubPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Date</label>
               <input
                 type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({...formData, date: e.target.value})}
+                value={formDataState.date}
+                onChange={(e) => setFormData({...formDataState, date: e.target.value})}
                 min={new Date().toISOString().split('T')[0]}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
               />
@@ -246,8 +304,8 @@ export default function RecycleHubPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Time Slot</label>
               <select
-                value={formData.time}
-                onChange={(e) => setFormData({...formData, time: e.target.value})}
+                value={formDataState.time}
+                onChange={(e) => setFormData({...formDataState, time: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                 <option value="">Select time</option>
                 <option value="morning">Morning (9 AM - 12 PM)</option>
@@ -260,8 +318,8 @@ export default function RecycleHubPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
             <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({...formData, notes: e.target.value})}
+              value={formDataState.notes}
+              onChange={(e) => setFormData({...formDataState, notes: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
               rows="2"
               placeholder="Any special instructions for pickup"

@@ -3,8 +3,17 @@
 import { useState } from 'react';
 import { ArrowLeft, Coins, Recycle, UtensilsCrossed, Leaf, Gift, Trophy, Star, TrendingUp, Calendar } from 'lucide-react';
 import Link from 'next/link';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function RecycleWallet() {
+  return (
+    <ProtectedRoute>
+      <RecycleWalletContent />
+    </ProtectedRoute>
+  );
+}
+
+function RecycleWalletContent() {
   const [userStats] = useState({
     totalPoints: 2450,
     itemsRecycled: 87,
