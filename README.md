@@ -7,7 +7,7 @@ All-in-one MERN app.
 
 ## Home Page Screenshot
 
-![Home Page](home-page.png)
+![Home Page](IMG-20250920-WA0022.jpg)
 
 What it does
 - Recycle: upload item photo, AI analyzes.
