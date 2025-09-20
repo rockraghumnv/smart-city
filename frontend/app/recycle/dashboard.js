@@ -3,8 +3,17 @@
 import { useState } from 'react';
 import { ArrowLeft, Package, UtensilsCrossed, MapPin, Clock, CheckCircle, X, Eye } from 'lucide-react';
 import Link from 'next/link';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function RecycleDashboard() {
+  return (
+    <ProtectedRoute allowedUserTypes={['vendor']}>
+      <RecycleDashboardContent />
+    </ProtectedRoute>
+  );
+}
+
+function RecycleDashboardContent() {
   const [requests, setRequests] = useState([
     {
       id: 1,
