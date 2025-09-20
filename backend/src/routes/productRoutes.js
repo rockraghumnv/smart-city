@@ -1,41 +1,37 @@
 const express = require('express');
-const router = express.Router();
-const { uploadProduct, getProducts } = require('../controllers/productController');
-const { protect } = require('../middleware/authMiddleware');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+const { protect } = require('../middleware/authMiddleware');
+const { uploadProduct, getProducts } = require('../controllers/productController');
 
-// --- Multer Configuration for file uploads ---
+const router = express.Router();
+
+// --- Multer Configuration ---
 const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    cb(null, 'backend/uploads/');
+  destination: function (req, file, cb) {
+    // CORRECTED: The destination should be 'uploads' relative to the project root.
+    const uploadDir = 'uploads'; 
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
   },
-  filename(req, file, cb) {
-    cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
-  },
-});
-
-function checkFileType(file, cb) {
-  const filetypes = /jpg|jpeg|png/;
-  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = filetypes.test(file.mimetype);
-
-  if (extname && mimetype) {
-    return cb(null, true);
-  } else {
-    cb('Images only!');
-  }
-}
-
-const upload = multer({
-  storage,
-  fileFilter: function (req, file, cb) {
-    checkFileType(file, cb);
+  filename: function (req, file, cb) {
+    cb(
+      null,
+      `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`
+    );
   },
 });
 
-// --- Route Definition ---
+const upload = multer({ storage: storage });
+
+// --- Route Definitions ---
 router.route('/').get(protect, getProducts);
-router.route('/upload').post(protect, upload.single('image'), uploadProduct);
+
+router
+  .route('/upload')
+  .post(protect, upload.single('image'), uploadProduct);
 
 module.exports = router;

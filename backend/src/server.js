@@ -7,6 +7,7 @@ const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 dotenv.config();
 
@@ -14,17 +15,24 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
+// Create uploads directory if it doesn't exist
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
 
+app.use(cors());
 app.use(express.json());
 
+// --- API Routes ---
 app.use('/api/items', itemRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 
-// Serve uploaded files statically
-app.use('/backend/uploads', express.static(path.join(__dirname, '../uploads')));
+// --- Static Folder ---
+// This correctly serves the 'uploads' folder from the project root.
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 const PORT = process.env.PORT || 5000;
 
