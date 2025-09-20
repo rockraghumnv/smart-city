@@ -1,59 +1,27 @@
-const Order = require('../models/orderModel');
-const Product = require('../models/productModel');
+import asyncHandler from 'express-async-handler';
+import Order from '../models/orderModel.js';
 
-// @desc    Create a new order
+// @desc    Create new order
 // @route   POST /api/orders
-// @access  Private/Vendor
-const createOrder = async (req, res) => {
-  const { productIds } = req.body;
+// @access  Private
+const addOrderItems = asyncHandler(async (req, res) => {
+  const { orderItems, totalPrice } = req.body;
 
-  if (!productIds || productIds.length === 0) {
-    return res.status(400).json({ message: 'No product IDs provided' });
-  }
-
-  try {
-    // Find all products and ensure they are available
-    const productsToBuy = await Product.find({
-      _id: { $in: productIds },
-      status: 'available',
-    });
-
-    if (productsToBuy.length !== productIds.length) {
-      return res.status(400).json({ message: 'Some products are not available or do not exist.' });
-    }
-
-    // For this version, we'll assume all products in an order belong to the same seller.
-    const sellerId = productsToBuy[0].user;
-    const allFromSameSeller = productsToBuy.every(p => p.user.equals(sellerId));
-
-    if (!allFromSameSeller) {
-        return res.status(400).json({ message: 'Please create separate orders for products from different sellers.' });
-    }
-
-    const totalPrice = productsToBuy.reduce((acc, item) => acc + item.price, 0);
-    const totalWeight = productsToBuy.reduce((acc, item) => acc + item.weight, 0);
-
+  if (orderItems && orderItems.length === 0) {
+    res.status(400);
+    throw new Error('No order items');
+    return;
+  } else {
     const order = new Order({
-      vendor: req.user._id,
-      seller: sellerId,
-      products: productIds,
+      orderItems,
+      user: req.user._id,
       totalPrice,
-      totalWeight,
     });
 
     const createdOrder = await order.save();
 
-    // IMPORTANT: Update the status of the purchased products
-    await Product.updateMany(
-      { _id: { $in: productIds } },
-      { $set: { status: 'sold' } }
-    );
-
     res.status(201).json(createdOrder);
-  } catch (error) {
-    console.error('Error creating order:', error);
-    res.status(500).json({ message: 'Server error' });
   }
-};
+});
 
-module.exports = { createOrder };
+export { addOrderItems };

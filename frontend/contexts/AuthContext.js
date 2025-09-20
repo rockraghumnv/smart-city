@@ -17,6 +17,8 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [token, setToken] = useState(null);
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+
   // Initialize auth state from localStorage
   useEffect(() => {
     const storedToken = localStorage.getItem('greenshift_token');
@@ -31,7 +33,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      const response = await fetch('/api/users/login', {
+      const response = await fetch(`${API_BASE_URL}/users/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -47,12 +49,12 @@ export const AuthProvider = ({ children }) => {
 
       // Store token and user info
       localStorage.setItem('greenshift_token', data.token);
-      localStorage.setItem('greenshift_user', JSON.stringify(data.user));
+      localStorage.setItem('greenshift_user', JSON.stringify(data));
       
       setToken(data.token);
-      setUser(data.user);
+      setUser(data);
 
-      return { success: true, user: data.user };
+      return { success: true, user: data };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -60,7 +62,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await fetch('/api/users/register', {
+      const response = await fetch(`${API_BASE_URL}/users/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,12 +78,12 @@ export const AuthProvider = ({ children }) => {
 
       // Store token and user info
       localStorage.setItem('greenshift_token', data.token);
-      localStorage.setItem('greenshift_user', JSON.stringify(data.user));
+      localStorage.setItem('greenshift_user', JSON.stringify(data));
       
       setToken(data.token);
-      setUser(data.user);
+      setUser(data);
 
-      return { success: true, user: data.user };
+      return { success: true, user: data };
     } catch (error) {
       return { success: false, error: error.message };
     }

@@ -1,7 +1,8 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/userModel');
+import jwt from 'jsonwebtoken';
+import User from '../models/userModel.js';
+import asyncHandler from 'express-async-handler';
 
-const protect = async (req, res, next) => {
+const protect = asyncHandler(async (req, res, next) => {
   let token;
 
   if (
@@ -21,22 +22,24 @@ const protect = async (req, res, next) => {
       next();
     } catch (error) {
       console.error(error);
-      res.status(401).json({ message: 'Not authorized, token failed' });
+      res.status(401);
+      throw new Error('Not authorized, token failed');
     }
   }
 
   if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token' });
+    res.status(401);
+    throw new Error('Not authorized, no token');
   }
-};
+});
 
 const isVendor = (req, res, next) => {
   if (req.user && req.user.userType === 'vendor') {
     next();
   } else {
-    res.status(403).json({ message: 'Not authorized. Only vendors can perform this action.' });
+    res.status(401).json({ message: 'Not authorized as a vendor' });
   }
 };
 
 
-module.exports = { protect, isVendor };
+export { protect, isVendor };

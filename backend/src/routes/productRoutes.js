@@ -1,17 +1,16 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const { protect } = require('../middleware/authMiddleware');
-const { uploadProduct, getProducts } = require('../controllers/productController');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { protect, isVendor } from '../middleware/authMiddleware.js';
+import { uploadProduct, getProducts, getProductById } from '../controllers/productController.js';
 
 const router = express.Router();
 
 // --- Multer Configuration ---
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // CORRECTED: The destination should be 'uploads' relative to the project root.
-    const uploadDir = 'uploads'; 
+    const uploadDir = 'uploads';
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -29,9 +28,10 @@ const upload = multer({ storage: storage });
 
 // --- Route Definitions ---
 router.route('/').get(protect, getProducts);
+router.route('/:id').get(protect, getProductById);
 
 router
   .route('/upload')
-  .post(protect, upload.single('image'), uploadProduct);
+  .post(protect, isVendor, upload.single('file'), uploadProduct);
 
-module.exports = router;
+export default router;

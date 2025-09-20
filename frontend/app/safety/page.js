@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Calendar, MapPin, Users } from "lucide-react";
 import Link from "next/link";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 function formatDate(dateStr) {
   const d = new Date(dateStr);
@@ -18,6 +19,7 @@ export default function CitySafetyPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [joining, setJoining] = useState("");
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
   useEffect(() => {
     fetchEvents();
@@ -27,7 +29,10 @@ export default function CitySafetyPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/safety/events");
+      const token = typeof window !== 'undefined' ? localStorage.getItem('greenshift_token') : null;
+      const res = await fetch(`${API_BASE_URL}/safety/events`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) throw new Error("Failed to fetch events");
       const data = await res.json();
       setEvents(data);
@@ -44,9 +49,13 @@ export default function CitySafetyPage() {
     setError("");
     setSuccess("");
     try {
-      const res = await fetch("/api/safety/events", {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('greenshift_token') : null;
+      const res = await fetch(`${API_BASE_URL}/safety/events`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error("Failed to create event");
@@ -65,7 +74,11 @@ export default function CitySafetyPage() {
     setJoining(eventId);
     setError("");
     try {
-      const res = await fetch(`/api/safety/events/${eventId}/join`, { method: "POST" });
+      const token = typeof window !== 'undefined' ? localStorage.getItem('greenshift_token') : null;
+      const res = await fetch(`${API_BASE_URL}/safety/events/${eventId}/join`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) throw new Error("Failed to join event");
       fetchEvents();
     } catch (e) {
@@ -76,6 +89,7 @@ export default function CitySafetyPage() {
   }
 
   return (
+    <ProtectedRoute>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-0 md:p-8">
       <div className="max-w-4xl mx-auto py-8">
         <div className="flex items-center justify-between mb-8">
@@ -187,5 +201,6 @@ export default function CitySafetyPage() {
         </div>
       )}
     </div>
+    </ProtectedRoute>
   );
 }

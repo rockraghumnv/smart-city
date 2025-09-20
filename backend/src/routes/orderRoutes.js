@@ -1,9 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { createOrder } = require('../controllers/orderController');
-const { protect, isVendor } = require('../middleware/authMiddleware');
+import { addOrderItems } from '../controllers/orderController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
-// This route is protected to ensure only logged-in vendors can access it.
-router.route('/').post(protect, isVendor, createOrder);
+router.route('/').post(protect, addOrderItems);
 
-module.exports = router;
+export default router;

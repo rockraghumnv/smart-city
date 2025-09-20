@@ -1,4 +1,4 @@
-const Item = require('../models/itemModel');
+import Item from '../models/itemModel.js';
 
 const getItems = async (req, res) => {
   const items = await Item.find({});
@@ -14,4 +14,4 @@ const createItem = async (req, res) => {
   res.status(201).json(createdItem);
 };
 
-module.exports = { getItems, createItem };
+export { getItems, createItem };

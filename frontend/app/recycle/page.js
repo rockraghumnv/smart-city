@@ -19,6 +19,8 @@ function RecycleHubContent() {
   const [classification, setClassification] = useState(null);
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  // Use env-based API base URL, fallback to localhost:5000
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
   const [requests, setRequests] = useState([
     { id: 1, type: 'recycle', category: 'plastic', quantity: '5', status: 'Completed', date: '2025-09-15', points: 50 },
     { id: 2, type: 'food', foodType: 'cooked', servings: '10', status: 'Completed', date: '2025-09-18', points: 200 }
@@ -54,29 +56,32 @@ function RecycleHubContent() {
       setIsUploading(true);
       try {
         const formData = new FormData();
-        formData.append('image', file);
-        formData.append('description', 'Recycling item');
-        formData.append('weight', formDataState.quantity || 1);
-        formData.append('category', formDataState.category || 'other');
-        // Add your auth token logic here if needed
-        const token = localStorage.getItem('greenshift_token');
-        const uploadRes = await fetch('http://localhost:5000/api/products/upload', {
+        // Backend expects the field name 'file' for the image
+        formData.append('file', file);
+        // Provide minimal required fields for productController
+        formData.append('name', 'Recyclable Item');
+        formData.append('description', 'User uploaded recyclable item');
+        formData.append('price', '0.50');
+
+        const token = typeof window !== 'undefined' ? localStorage.getItem('greenshift_token') : null;
+        const uploadRes = await fetch(`${API_BASE_URL}/products/upload`, {
           method: 'POST',
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: formData,
         });
-        if (!uploadRes.ok) throw new Error('Image upload failed');
+
+        if (!uploadRes.ok) {
+          const errText = await uploadRes.text();
+          throw new Error(errText || 'Image upload failed');
+        }
+
         const uploadData = await uploadRes.json();
-        const filename = uploadData.filename || uploadData.file || uploadData.image || file.name;
-        // Call classify-image API
-        const classifyRes = await fetch('http://localhost:5000/api/classify-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename }),
+        // Use backend's AI analysis directly for the UI classification box
+        setClassification({
+          result: uploadData.analysis || 'Upload successful',
+          recyclable: true,
+          message: uploadData.analysis || 'Upload successful',
         });
-        if (!classifyRes.ok) throw new Error('Classification failed');
-        const classifyData = await classifyRes.json();
-        setClassification(classifyData);
       } catch (err) {
         setUploadError(err.message);
       } finally {
@@ -249,7 +254,7 @@ function RecycleHubContent() {
                   </div>
                 </div>
               )}
-              {isUploading && <div className="text-sm text-gray-500 mt-2">Uploading and classifying...</div>}
+              {isUploading && <div className="text-sm text-gray-500 mt-2">Uploading...</div>}
               {uploadError && <div className="text-red-600 text-sm mt-2">{uploadError}</div>}
               {classification && (
                 <div className="mt-4 p-4 rounded-lg border border-green-200 bg-green-50 text-left">

@@ -1,14 +1,15 @@
-require('dotenv').config();
-
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
-const connectDB = require('./config/db');
-const itemRoutes = require('./routes/itemRoutes');
-const userRoutes = require('./routes/userRoutes');
-const productRoutes = require('./routes/productRoutes');
-const orderRoutes = require('./routes/orderRoutes');
+import dotenv from 'dotenv';
+dotenv.config();
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
+import connectDB from './config/db.js';
+import itemRoutes from './routes/itemRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import productRoutes from './routes/productRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import safetyRoutes from './safety/routes/safetyRoutes.js';
 
 // Connect to database
 connectDB();
@@ -29,11 +30,12 @@ app.use('/api/items', itemRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/safety', safetyRoutes);
 
 // --- Static Folder ---
 // This correctly serves the 'uploads' folder from the project root.
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

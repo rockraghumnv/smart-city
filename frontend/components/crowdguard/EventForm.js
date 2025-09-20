@@ -14,7 +14,7 @@ export default function EventForm({ onCancel, initialData = null }) {
     venue: initialData?.venue || '',
     startAt: initialData?.startAt ? new Date(initialData.startAt).toISOString().slice(0, 16) : '',
     endAt: initialData?.endAt ? new Date(initialData.endAt).toISOString().slice(0, 16) : '',
-    capacity: initialData?.capacity || 100,
+    capacity: initialData?.capacity ? String(initialData.capacity) : '100',
     organizer: initialData?.organizer || '',
     location: {
       lat: initialData?.location?.lat || '',
@@ -30,9 +30,11 @@ export default function EventForm({ onCancel, initialData = null }) {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      const parsedCapacity = parseInt(formData.capacity, 10);
       const eventData = {
         id: initialData?.id || generateId(),
         ...formData,
+        capacity: Number.isNaN(parsedCapacity) ? 1 : parsedCapacity,
         startAt: new Date(formData.startAt).toISOString(),
         endAt: new Date(formData.endAt).toISOString(),
         location: {
@@ -224,7 +226,7 @@ export default function EventForm({ onCancel, initialData = null }) {
             required
             min="1"
             value={formData.capacity}
-            onChange={(e) => handleChange('capacity', parseInt(e.target.value))}
+            onChange={(e) => handleChange('capacity', e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
             placeholder="Maximum number of attendees"
           />

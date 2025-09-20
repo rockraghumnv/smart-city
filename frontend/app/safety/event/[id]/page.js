@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Upload, Send, Loader2 } from "lucide-react";
 import Link from "next/link";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 function formatDate(dateStr) {
   const d = new Date(dateStr);
@@ -22,6 +23,7 @@ export default function EventDetailsPage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef();
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
   useEffect(() => {
     fetchEvent();
@@ -31,7 +33,10 @@ export default function EventDetailsPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/safety/events`);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('greenshift_token') : null;
+      const res = await fetch(`${API_BASE_URL}/safety/events`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) throw new Error("Failed to fetch event");
       const data = await res.json();
       const found = data.find(e => e._id === eventId);
@@ -57,8 +62,10 @@ export default function EventDetailsPage() {
       if (reportType === "text") {
         formData.append("textContent", textContent);
       }
-      const res = await fetch(`/api/safety/reports/${eventId}`, {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('greenshift_token') : null;
+      const res = await fetch(`${API_BASE_URL}/safety/reports/${eventId}`, {
         method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
       if (!res.ok) throw new Error("Failed to submit report");
@@ -75,6 +82,7 @@ export default function EventDetailsPage() {
   }
 
   return (
+    <ProtectedRoute>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-0 md:p-8">
       <div className="max-w-2xl mx-auto py-8">
         <div className="flex items-center mb-6">
@@ -150,5 +158,6 @@ export default function EventDetailsPage() {
         )}
       </div>
     </div>
+    </ProtectedRoute>
   );
 }
