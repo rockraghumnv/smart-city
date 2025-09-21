@@ -33,17 +33,29 @@ const uploadProduct = asyncHandler(async (req, res) => {
   const filePath = req.file.path;
 
   try {
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    // Default analysis if API key missing/invalid
+    let analysisText = 'AI analysis unavailable.';
 
-    const prompt =
-      'Analyze the image of the recyclable product. Provide a simple text analysis. Example: "Recyclable: Yes, Category: Plastic, Value: $0.50"';
+    if (API_KEY) {
+      try {
+        const genAI = new GoogleGenerativeAI(API_KEY);
+        const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
-    const imageParts = [fileToGenerativePart(filePath, req.file.mimetype)];
+        const prompt =
+          'Analyze the image of the recyclable product. Provide a simple text analysis. Example: "Recyclable: Yes, Category: Plastic, Value: $0.50"';
 
-    const result = await model.generateContent([prompt, ...imageParts]);
-    const response = result.response;
-    const geminiText = response.text().trim();
+        const imageParts = [fileToGenerativePart(filePath, req.file.mimetype)];
+
+        const result = await model.generateContent([prompt, ...imageParts]);
+        const response = result.response;
+        analysisText = (response.text() || '').trim() || analysisText;
+      } catch (aiErr) {
+        // Keep upload functional even if AI fails (e.g., invalid/missing key)
+        console.warn('Gemini analysis failed, proceeding without AI text:', aiErr?.message || aiErr);
+      }
+    } else {
+      console.warn('GEMINI_API_KEY not set. Proceeding without AI analysis.');
+    }
 
     const product = await Product.create({
       name,
@@ -51,11 +63,8 @@ const uploadProduct = asyncHandler(async (req, res) => {
       price,
       image: `/${filePath.replace(/\\/g, '/')}`,
       vendor: req.user._id,
-      analysis: geminiText,
+      analysis: analysisText,
     });
-
-    // No need to unlink here if we want to store the image path
-    // fs.unlinkSync(filePath);
 
     res.status(201).json(product);
   } catch (error) {

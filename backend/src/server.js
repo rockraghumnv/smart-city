@@ -36,6 +36,18 @@ app.use('/api/safety', safetyRoutes);
 // This correctly serves the 'uploads' folder from the project root.
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+// --- Health Check ---
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    mongo: 'connected',
+    port: process.env.PORT || 5001,
+    ai: {
+      geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+    },
+  });
+});
+
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
