@@ -95,6 +95,15 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
   };
+  // Helper function to check if user is a vendor
+  const isVendor = () => {
+    return user && (user.role === 'vendor' || user.userType === 'vendor');
+  };
+
+  // Helper function to get user role
+  const getUserRole = () => {
+    return user?.role || user?.userType || 'individual';
+  };
 
   const value = {
     user,
@@ -104,6 +113,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     isAuthenticated: !!user,
+    isVendor,
+    getUserRole,
   };
 
   return (
