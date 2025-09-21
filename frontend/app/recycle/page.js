@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Recycle, UtensilsCrossed, Camera, MapPin, Calendar, Clock, Upload, CheckCircle, Coins, Truck, Package, AlertCircle, Users, Leaf } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function RecycleHubPage() {
@@ -14,6 +16,28 @@ export default function RecycleHubPage() {
 }
 
 function RecycleHubContent() {
+  const router = useRouter();
+  const { isVendor, getUserRole } = useAuth();
+  
+  // Redirect vendors to vendor dashboard immediately
+  useEffect(() => {
+    if (isVendor()) {
+      router.push('/recycle/vendor');
+    }
+  }, [isVendor, router]);
+
+  // Don't render the normal interface if user is a vendor
+  if (isVendor()) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to vendor dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   const [currentView, setCurrentView] = useState('home');
   const [uploadedImage, setUploadedImage] = useState(null);
   const [classification, setClassification] = useState(null);
@@ -161,9 +185,7 @@ function RecycleHubContent() {
             Donate Food
           </button>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
+      </div>      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <button 
           onClick={() => setCurrentView('wallet')}
           className="bg-white border-2 border-gray-200 rounded-lg p-4 flex items-center space-x-3 hover:border-green-500 transition-colors">
@@ -176,6 +198,12 @@ function RecycleHubContent() {
           <Clock className="w-6 h-6 text-blue-500" />
           <span className="font-medium">Request History</span>
         </button>
+        <Link
+          href="/recycle/vendor"
+          className="bg-white border-2 border-gray-200 rounded-lg p-4 flex items-center space-x-3 hover:border-purple-500 transition-colors">
+          <Package className="w-6 h-6 text-purple-500" />
+          <span className="font-medium">Vendor Dashboard</span>
+        </Link>
       </div>
     </div>
   );
