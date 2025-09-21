@@ -1,8 +1,13 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+import { fileURLToPath } from 'url';
+// Resolve .env explicitly from backend/.env regardless of process.cwd()
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 import express from 'express';
 import cors from 'cors';
-import path from 'path';
 import fs from 'fs';
 import connectDB from './config/db.js';
 import itemRoutes from './routes/itemRoutes.js';
